@@ -218,7 +218,7 @@ def limpiar_historial_usuario(user_id):
 # BLOQUE 6 — CONFIGURACIÓN DEL MODELO GEMINI
 # ============================================================
 
-import google.generativeai as genai
+from google import genai
 
 api_key = os.environ.get("GEMINI_API_KEY")
 if api_key:
