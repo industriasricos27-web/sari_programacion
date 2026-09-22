@@ -221,9 +221,8 @@ def limpiar_historial_usuario(user_id):
 from google import genai
 
 api_key = os.environ.get("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
-
+# Inicializamos el cliente de genai correctamente
+client = genai.Client(api_key=api_key)
 MODELO_GEMINI = "gemini-2.5-flash"
 
 def generar_respuesta_mily(user_id, mensaje_usuario, contexto_drive=""):
