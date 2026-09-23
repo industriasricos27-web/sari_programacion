@@ -77,51 +77,6 @@ ADMINES_AUTORIZADOS = [
 
 
 # ============================================================
-# BLOQUE 3 — CEREBRO COMERCIAL E INSTRUCCIONES DE SISTEMA (MILY)
-# ============================================================
-
-SYSTEM_PROMPT_MILY = """
-PROMPT DE SISTEMA Y CEREBRO — MILY
-ASESORA COMERCIAL, EXPERTA EN TALLER Y PRECALIFICADORA DE IRONWORKS HRs
-
-1. IDENTIDAD Y TONO
-Eres Mily, la asesora comercial y experta de taller de IRONWORKS HRs — Hermanos Rico Diseño y Estructura. 
-Hablas con la cercanía, naturalidad y seguridad de quien vive el metalwork todos los días: cálida, profesional, experta y apasionada por el diseño minimalista y la herrería pesada. 
-No suenes robótica ni corporativa. Ve directo al grano con párrafos cortos y humanos (máximo 2 a 3 oraciones). 
-Tu función principal es atender clientes, detectar necesidades, orientar, precalificar proyectos y guiar con maestría hacia la venta directa, la cotización formal o la visita técnica.
-
-2. VITRINA VISUAL Y FUENTE DE INSPIRACIÓN (PINTEREST)
-- Nuestra vitrina oficial de diseños, proyectos previos y fuente principal de inspiración es nuestro perfil de Pinterest: https://pin.it/12ojB0iY6.
-- Cuando los clientes te compartan fotos o te pidan referencias visuales (como rejas, separadores o muebles minimalistas), utilízalo y recuérdalo con orgullo para mostrarles de lo que somos capaces en el taller.
-
-3. REGLA FUNDAMENTAL DE PRECIOS Y CATÁLOGOS (FUENTE DINÁMICA DE DRIVE)
-- CONSULTA DE PRODUCTOS: Debes basarte estrictamente en la información técnica y de catálogos obtenida dinámicamente desde la carpeta oficial de Google Drive vinculada al sistema.
-- PROHIBICIÓN DE COTIZAR A CIEGAS: Si el cliente solicita una modificación, diseño personalizado, escalera, reja o proyecto sobre fotografía que no esté cubierto o estandarizado en los documentos de Drive, Mily NO debe inventar ni calcular un precio. Debe recopilar datos y solicitar evaluación técnica.
-
-4. PROTOCOLO PARA PROYECTOS PERSONALIZADOS
-PASO 1 — Recibir y confirmar imagen/solicitud.
-PASO 2 — Recopilar: Producto, medidas aproximadas, ubicación, uso y si desea réplica exacta o modificación.
-PASO 3 — Solicitar evaluación al equipo técnico interno (Maestro Andrés y Alexa) con el formato estructurado.
-PASO 4 — Informar al cliente que el equipo técnico está evaluando la referencia.
-
-5. UBICACIONES Y CONTACTO
-- Bosa / El Porvenir: Calle 61A Sur #87B-36
-- Fontibón Centro: Calle 17A #102-67
-
-6. REGLA DE CIERRE
-Toda conversación debe finalizar con una pregunta clara para avanzar (Ejemplo: "*¿Para qué sector o barrio de la ciudad necesitas el separador, señor?*").
-"""
-
-SYSTEM_PROMPT_INTERNO = """
-PROMPT DE SISTEMA — MILY (MODO INTERNO Y ACADEMIA DEL TALLER)
-Estás interactuando con un miembro del equipo de IRONWORKS HRs (Alexa, Maestro Andrés o un nuevo colaborador en entrenamiento).
-- Asiste con reportes de estado, recepción de requerimientos técnicos y coordinación de cotizaciones personalizadas.
-- Actúa también como tutora y guía de oratoria comercial para entrenar a los nuevos empleados o maestros colaboradores en la forma correcta de hablar, estructurar ofertas y mantener los estándares verbales del taller.
-- Mantén un tono operativo, profesional, claro y enfocado en la excelencia de la marca.
-"""
-
-
-# ============================================================
 # BLOQUE 4 — CATÁLOGO Y FUENTES DE VERDAD (GOOGLE DRIVE)
 # ============================================================
 
@@ -210,7 +165,7 @@ def limpiar_historial_usuario(user_id):
 
 
 # ============================================================
-# BLOQUE 6 — CONFIGURACIÓN DEL MODELO GEMINI
+# BLOQUE 6 — CONFIGURACIÓN DEL MODELO GEMINI Y PROMPT DE MILY
 # ============================================================
 
 from google import genai
@@ -225,12 +180,61 @@ def generar_respuesta_mily(user_id, mensaje_usuario, contexto_drive=""):
         return "Lo siento, en este momento tengo un problema temporal de configuración con mi inteligencia artificial."
 
     try:
-        system_instruction = (
-            "Eres Mily, la asistente virtual  de IRONWORKS HRs, experta en ventas, "
-            "atención al cliente y asesoría en proyectos pesados, metalwork y muebles de diseño minimalista. "
-            "Utiliza la información técnica y de catálogos proporcionada para responder de forma amable, "
-            "profesional y orientada a concretar ventas o agendar asesorías."
-        )
+        system_instruction = """
+Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística y mobiliario minimalista dirigido por el maestro Andrés.
+
+=== REGLA DE ORO DE VISIÓN Y AISLAMIENTO DE OBJETIVOS ===
+Cuando un cliente te envíe una foto (de Pinterest, web o referencia externa) que muestre un espacio completo (por ejemplo, una habitación con cama, mesas de noche, lámparas, sábanas o alfombras), tu **visión láser** debe aislar **únicamente la estructura metálica o de mobiliario fabricable por el taller** (ej. la cama). 
+- Nunca cotices ni menciones accesorios ambientales como colchones, ropa de cama, cobijas, almohadas, lámparas o elementos decorativos externos, a menos que el cliente pida explícitamente un mueble adicional (como una mesa de noche del catálogo).
+- Aclara con naturalidad que el trabajo comprende la estructura en hierro a la medida.
+
+=== CATÁLOGO VISUAL Y REDES SOCIALES ===
+- **Cuando el cliente pida ver fotos, modelos o el catálogo:** Comparte de inmediato nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (explícale que allí tenemos nuestra vitrina visual de camas, separadores y trabajos en hierro).
+- **Cuando pregunten por redes sociales:** Preséntales nuestro Pinterest oficial como principal portafolio de diseño del taller.
+
+=== FILOSOFÍA DE FABRICACIÓN ===
+- Todo se fabrica **bajo pedido** (nada de entrega inmediata). El tiempo estimado de producción es de mínimo 3 días hábiles en adelante (ej: pedido el 27, entrega tentativa el 30).
+
+=== CHECKLIST DE RECOPILACIÓN DE DATOS (OBLIGATORIO) ===
+A medida que conversas con el cliente, debes recopilar ordenadamente estos 5 datos clave:
+1. **El Nombre:** ¿Con quién estás hablando? (Pregúntalo en el primer saludo).
+2. **El Producto y Línea:** Saber exactamente qué pieza quiere.
+3. **Las Medidas:** Ancho, alto y largo, o si se mantiene en las medidas estándar.
+4. **Ubicación e Instalación:** Localidad, barrio o sector de entrega, y si requiere servicio de instalación en sitio.
+5. **Tipo de Acabado (Pintura):** Definir el color y tipo según la regla de abajo.
+
+=== PROTOCOLO 1: LÍNEA HOGAR (CAMAS Y SEPARADORES) ===
+1. **Líneas disponibles para camas:**
+   - **Línea Estructural:** Práctica, sólida, de líneas limpias y excelente costo-eficiencia.
+   - **Línea Flotante:** Moderna, de diseño vanguardista y muy cotizada. *(Nota obligatoria: Aclara siempre que va anclada firmemente tanto al piso como a la pared para lograr el efecto flotante con total seguridad).*
+   - **Línea Heritage:** La máxima expresión de forja artística y de época, exclusiva y de alta gama.
+2. **Medidas estándar de camas:** Sencilla (1.00x1.90), Semidoble (1.20x1.90), Doble (1.40x1.90), Queen (1.60x1.90) y King (2.00x2.00).
+3. **Pintura:** El acabado con pintura electrostática viene **incluido por defecto** en la línea hogar.
+4. **Precios:** Los valores se ven claramente en el catálogo de Google Drive adjunto.
+
+=== PROTOCOLO 2: LÍNEA PESADA Y OBRAS DE TALLER ===
+(Para ventanas, techos, rejas, puertas, portones, mezanines, food trailers, estructuras especiales, escaleras, cortinas metálicas, contenedores).
+- **Pintura / Acabado:** 
+  - La opción de **pintura electrostática (al horno)** —con su respectivo recargo por encendido del horno— **únicamente** se puede ofrecer para: barandas de escalera, puertas, portones y rejas.
+  - Para el resto de estructuras masivas (mezanines, escaleras completas, etc.), se asigna **pintura tradicional**.
+
+=== PROTOCOLO 3: DERIVACIÓN AL MAESTRO ANDRÉS Y CIERRE DE VENTA ===
+1. **Derivación:** Pásale el caso directamente al Maestro Andrés (con los 5 datos del checklist) si:
+   - El cliente de la línea hogar pide un cambio en las medidas estándar.
+   - El cliente envía una foto o diseño externo (Pinterest) fuera del catálogo.
+   - Es cualquier producto de la línea pesada para que él aplique su criterio y cotización formal.
+2. **Respuesta en tiempo real:** Si el Maestro Andrés te envía el precio rápido, preséntaselo al cliente de inmediato.
+3. **Mensaje de Confirmación Final:** Cuando el pedido esté definido y con precio, envía un resumen con esta estructura exacta:
+   - Producto y Línea / Medida.
+   - Acabado / Pintura.
+   - Destino de entrega.
+   - Valor total.
+   - **Condiciones de pago:** Pago contra entrega (Sin anticipos; el taller asume la fabricación y el cliente paga al recibir y verificar a satisfacción).
+   - Pregunta de cierre: "¿Me confirmas si procedemos con tu pedido? (Sí / No)"
+
+=== TONO Y ESTILO ===
+- Sé directa, cálida, experta y humana. Tus respuestas de texto no deben superar los 2 o 3 párrafos cortos. Ve directo al grano, haz preguntas clave de a poco y guía al cliente con elegancia.
+"""
 
         historial = obtener_historial_usuario(user_id)
 
@@ -259,49 +263,64 @@ def generar_respuesta_mily(user_id, mensaje_usuario, contexto_drive=""):
     
 
 # ============================================================
-# BLOQUE 7 — ENVÍO DE MENSAJES A WHATSAPP (META API)
+# BLOQUE 7 — ENVÍO DE MENSAJES (WHATSAPP Y TELEGRAM)
 # ============================================================
 
 def enviar_mensaje_whatsapp(numero_destino, texto_respuesta):
-    """
-    Envía una respuesta de texto al número de WhatsApp del cliente usando la API oficial de Meta.
-    """
     if not WHATSAPP_TOKEN or not PHONE_NUMBER_ID:
-        print("⚠ [Bloque 7] Faltan credenciales de WhatsApp (WHATSAPP_TOKEN o PHONE_NUMBER_ID).")
+        print("⚠ [Bloque 7] Faltan credenciales de WhatsApp.")
         return
 
     url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
-    
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
     }
-    
     payload = {
         "messaging_product": "whatsapp",
         "to": numero_destino,
         "type": "text",
-        "text": {
-            "body": texto_respuesta
-        }
+        "text": {"body": texto_respuesta}
     }
     
     try:
         response = requests.post(url, headers=headers, json=payload)
         if response.status_code == 200:
-            print(f"✅ [WhatsApp] Mensaje enviado con éxito a {numero_destino}")
+            print(f"✅ [WhatsApp] Mensaje enviado a {numero_destino}")
         else:
-            print(f"❌ [WhatsApp] Error al enviar mensaje: {response.status_code} - {response.text}")
+            print(f"❌ [WhatsApp] Error: {response.status_code} - {response.text}")
     except Exception as e:
-        print(f"❌ [Bloque 7] Excepción al enviar mensaje a WhatsApp: {e}")
+        print(f"❌ [Bloque 7] Excepción en WhatsApp: {e}")
+
+
+def enviar_mensaje_telegram(chat_id, texto_respuesta):
+    if not TELEGRAM_API_URL:
+        print("⚠ [Bloque 7] Falta TELEGRAM_TOKEN.")
+        return
+    
+    url = f"{TELEGRAM_API_URL}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": texto_respuesta,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print(f"✅ [Telegram] Mensaje enviado a {chat_id}")
+        else:
+            print(f"❌ [Telegram] Error: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"❌ [Bloque 7] Excepción en Telegram: {e}")
 
 
 # ============================================================
-# BLOQUE 8 — RUTAS Y WEBHOOKS DE COMUNICACIÓN (WHATSAPP)
+# BLOQUE 8 — WEBHOOK DE WHATSAPP (RUTAS SEPARADAS Y SEGURAS)
 # ============================================================
 
 @app.route('/webhook/whatsapp', methods=['GET', 'POST'])
-def webhook_whatsapp_bloque8():
+def webhook_whatsapp_meta():
     if request.method == 'GET':
         hub_mode = request.args.get('hub.mode')
         hub_verify_token = request.args.get('hub.verify_token')
@@ -317,22 +336,13 @@ def webhook_whatsapp_bloque8():
         try:
             if 'entry' in data and 'changes' in data['entry'][0]:
                 mensaje_data = data['entry'][0]['changes'][0]['value']
-                
                 if 'messages' in mensaje_data:
                     mensaje = mensaje_data['messages'][0]['text']['body']
                     numero_remitente = mensaje_data['messages'][0]['from']
                     
-                    print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}" if 'numero_remitente' in locals() else f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}")
-                    
-                    contexto_actual = ""
-                    
-                    # Generamos la respuesta con la IA de Mily
-                    respuesta_ia = generar_respuesta_mily(numero_remitente, mensaje, contexto_drive=contexto_actual)
-                    print(f"🤖 [Mily Respuesta]: {respuesta_ia}")
-                    
-                    # Enviamos la respuesta de vuelta al cliente
+                    print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}")
+                    respuesta_ia = generar_respuesta_mily(numero_remitente, mensaje)
                     enviar_mensaje_whatsapp(numero_remitente, respuesta_ia)
-                    
         except Exception as e:
             print(f"❌ [Bloque 8] Error procesando mensaje de WhatsApp: {e}")
             
@@ -340,33 +350,8 @@ def webhook_whatsapp_bloque8():
 
 
 # ============================================================
-# BLOQUE 9 — RUTAS Y WEBHOOKS DE TELEGRAM (TEXTO E IMÁGENES)
+# BLOQUE 9 — WEBHOOK DE TELEGRAM Y RUTA ALTERNATIVA
 # ============================================================
-
-def enviar_mensaje_telegram(chat_id, texto_respuesta):
-    """
-    Envía una respuesta de texto al chat de Telegram del usuario.
-    """
-    if not TELEGRAM_API_URL:
-        print("⚠ [Bloque 9] Falta el token de Telegram (TELEGRAM_TOKEN).")
-        return
-
-    url = f"{TELEGRAM_API_URL}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": texto_respuesta,
-        "parse_mode": "Markdown"
-    }
-    
-    try:
-        response = requests.post(url, json=payload)
-        if response.status_code == 200:
-            print(f"✅ [Telegram] Mensaje enviado con éxito a {chat_id}")
-        else:
-            print(f"❌ [Telegram] Error al enviar mensaje: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"❌ [Bloque 9] Excepción al enviar mensaje a Telegram: {e}")
-
 
 @app.route('/webhook/telegram', methods=['POST'])
 def webhook_telegram():
@@ -375,47 +360,41 @@ def webhook_telegram():
         if "message" in data:
             message_data = data["message"]
             chat_id = message_data["chat"]["id"]
+            mensaje = message_data.get("text", message_data.get("caption", ""))
             
-            # 1. DETECTAR EL TIPO DE CONTENIDO
-            mensaje = ""
-            tipo_contenido = "texto"
-            file_id = None
-
-            # Si mandó una foto
-            if "photo" in message_data:
-                tipo_contenido = "imagen"
-                # Telegram manda un arreglo de fotos de menor a mayor resolución. Tomamos la última.
-                foto_info = message_data["photo"][-1]
-                file_id = foto_info["file_id"]
-                # Si escribió algo junto con la foto, lo capturamos como texto/caption
-                mensaje = message_data.get("caption", "[El usuario envió una imagen sin texto]")
-                print(f"📷 [Telegram] Imagen recibida de {chat_id}. Archivo ID: {file_id}")
-
-            # Si mandó un documento o archivo
-            elif "document" in message_data:
-                tipo_contenido = "documento"
-                doc_info = message_data["document"]
-                file_id = doc_info["file_id"]
-                mensaje = message_data.get("caption", f"[El usuario envió un documento: {doc_info.get('file_name', 'archivo')}]")
-                print(f"📁 [Telegram] Documento recibido de {chat_id}")
-
-            # Si es un mensaje de texto normal
-            elif "text" in message_data:
-                mensaje = message_data["text"]
-                print(f"📩 [Telegram] Texto recibido de {chat_id}: {mensaje}")
-
-            # 2. PROCESAR CON MILY (IA)
             if mensaje:
-                # Aquí más adelante puedes pasarle el file_id a Gemini si quieres que analice la imagen.
-                # Por ahora, Mily responderá al texto o al aviso de que llegó una imagen.
+                print(f"📩 [Telegram] Mensaje recibido de {chat_id}: {mensaje}")
                 respuesta_ia = generar_respuesta_mily(str(chat_id), mensaje)
-                print(f"🤖 [Mily Respuesta]: {respuesta_ia}")
-                
-                # 3. RESPONDER AL USUARIO
                 enviar_mensaje_telegram(chat_id, respuesta_ia)
                 
     except Exception as e:
-        print(f"❌ [Bloque 9 - Telegram] Error procesando mensaje: {e}")
+        print(f"❌ [Bloque 9 - Telegram] Error: {e}")
+        
+    return jsonify({"status": "ok"}), 200
+
+
+@app.route('/webhook', methods=['GET', 'POST'])
+def webhook_whatsapp_raiz():
+    if request.method == 'GET':
+        mode = request.args.get("hub.mode")
+        token = request.args.get("hub.verify_token")
+        challenge = request.args.get("hub.challenge")
+        
+        if mode and token and mode == "subscribe" and token == VERIFY_TOKEN:
+            return challenge, 200
+        return "Verificación fallida", 403
+
+    data = request.get_json()
+    try:
+        if 'entry' in data and 'changes' in data['entry'][0]:
+            mensaje_data = data['entry'][0]['changes'][0]['value']
+            if 'messages' in mensaje_data:
+                mensaje = mensaje_data['messages'][0]['text']['body']
+                numero_remitente = mensaje_data['messages'][0]['from']
+                print(f"📩 [WhatsApp Root] Mensaje recibido de {numero_remitente}: {mensaje}")
+                respuesta_ia = generar_respuesta_mily(str(numero_remitente), mensaje)
+    except Exception as e:
+        print(f"❌ [Bloque 9 - Root] Error: {e}")
         
     return jsonify({"status": "ok"}), 200
 
