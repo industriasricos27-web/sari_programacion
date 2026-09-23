@@ -344,6 +344,61 @@ def webhook_whatsapp():
 
 
 # ============================================================
+# BLOQUE 9 — RUTAS Y WEBHOOKS DE COMUNICACIÓN (TELEGRAM)
+# ============================================================
+
+def enviar_mensaje_telegram(chat_id, texto_respuesta):
+    """
+    Envía una respuesta de texto al chat de Telegram del usuario.
+    """
+    if not TELEGRAM_API_URL:
+        print("⚠ [Bloque 9] Falta el token de Telegram (TELEGRAM_TOKEN).")
+        return
+
+    url = f"{TELEGRAM_API_URL}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": texto_respuesta,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print(f"✅ [Telegram] Mensaje enviado con éxito a {chat_id}")
+        else:
+            print(f"❌ [Telegram] Error al enviar mensaje: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"❌ [Bloque 9] Excepción al enviar mensaje a Telegram: {e}")
+
+
+@app.route('/webhook/telegram', methods=['POST'])
+def webhook_telegram():
+    data = request.get_json()
+    try:
+        if "message" in data:
+            chat_id = data["message"]["chat"]["id"]
+            mensaje = data["message"].get("text", "")
+            
+            if mensaje:
+                print(f"📩 [Telegram] Mensaje recibido de {chat_id}: {mensaje}")
+                
+                contexto_actual = ""
+                
+                # Generamos la respuesta con la IA de Mily usando el chat_id como identificador único
+                respuesta_ia = generar_respuesta_mily(str(chat_id), mensaje, contexto_drive=contexto_actual)
+                print(f"🤖 [Mily Respuesta]: {respuesta_ia}")
+                
+                # Enviamos la respuesta de vuelta a Telegram
+                enviar_mensaje_telegram(chat_id, respuesta_ia)
+                
+    except Exception as e:
+        print(f"❌ [Bloque 9] Error procesando mensaje de Telegram: {e}")
+        
+    return jsonify({"status": "ok"}), 200
+
+
+# ============================================================
 # ARRANQUE DEL SERVIDOR
 # ============================================================
 
