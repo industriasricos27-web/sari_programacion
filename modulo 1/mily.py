@@ -327,7 +327,7 @@ def webhook_whatsapp():
                     mensaje = mensaje_data['messages'][0]['text']['body']
                     numero_remitente = mensaje_data['messages'][0]['from']
                     
-                    print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitient}: {mensaje}" if 'numero_remitient' in locals() else f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}")
+                    print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitiente}: {mensaje}" if 'numero_remitient' in locals() else f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}")
                     
                     contexto_actual = ""
                     
@@ -345,56 +345,68 @@ def webhook_whatsapp():
 
 
 # ============================================================
-# BLOQUE 9 — RUTAS Y WEBHOOKS DE COMUNICACIÓN (TELEGRAM)
+# BLOQUE 9 — RUTAS Y WEBHOOKS DE COMUNICACIÓN (TELEGRAM Y WHATSAPP)
 # ============================================================
 
-def enviar_mensaje_telegram(chat_id, texto_respuesta):
-    """
-    Envía una respuesta de texto al chat de Telegram del usuario.
-    """
-    if not TELEGRAM_API_URL:
-        print("⚠ [Bloque 9] Falta el token de Telegram (TELEGRAM_TOKEN).")
-        return
-
-    url = f"{TELEGRAM_API_URL}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": texto_respuesta,
-        "parse_mode": "Markdown"
-    }
-    
-    try:
-        response = requests.post(url, json=payload)
-        if response.status_code == 200:
-            print(f"✅ [Telegram] Mensaje enviado con éxito a {chat_id}")
-        else:
-            print(f"❌ [Telegram] Error al enviar mensaje: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"❌ [Bloque 9] Excepción al enviar mensaje a Telegram: {e}")
-
-
+# --- 1. RUTA PARA TELEGRAM ---
 @app.route('/webhook/telegram', methods=['POST'])
 def webhook_telegram():
     data = request.get_json()
     try:
         if "message" in data:
-            chat_id = data["message"]["chat"]["id"]
-            mensaje = data["message"].get("text", "")
+            message_data = data["message"]
+            chat_id = message_data["chat"]["id"]
+            mensaje = message_data.get("text", message_data.get("caption", ""))
             
             if mensaje:
                 print(f"📩 [Telegram] Mensaje recibido de {chat_id}: {mensaje}")
                 
-                contexto_actual = ""
-                
-                # Generamos la respuesta con la IA de Mily usando el chat_id como identificador único
-                respuesta_ia = generar_respuesta_mily(str(chat_id), mensaje, contexto_drive=contexto_actual)
+                # Llamamos a Mily usando el chat_id como identificador
+                respuesta_ia = generar_respuesta_mily(str(chat_id), mensaje)
                 print(f"🤖 [Mily Respuesta]: {respuesta_ia}")
                 
-                # Enviamos la respuesta de vuelta a Telegram
                 enviar_mensaje_telegram(chat_id, respuesta_ia)
                 
     except Exception as e:
-        print(f"❌ [Bloque 9] Error procesando mensaje de Telegram: {e}")
+        print(f"❌ [Bloque 9 - Telegram] Error: {e}")
+        
+    return jsonify({"status": "ok"}), 200
+
+
+# --- 2. RUTA PARA WHATSAPP / META (Lista para el futuro sin chocar) ---
+@app.route('/webhook', methods=['GET', 'POST'])
+def webhook_whatsapp():
+    if request.method == 'GET':
+        # Verificación inicial de Meta (si algún día la retomas)
+        verify_token = os.environ.get("VERIFY_TOKEN", "tu_token_secreto")
+        mode = request.args.get("hub.mode")
+        token = request.args.get("hub.verify_token")
+        challenge = request.args.get("hub.challenge")
+        
+        if mode and token and mode == "subscribe" and token == verify_token:
+            return challenge, 200
+        return "Verificación fallida", 403
+
+    # Procesamiento de mensajes entrantes de WhatsApp
+    data = request.get_json()
+    try:
+        if 'entry' in data and 'changes' in data['entry'][0]:
+            mensaje_data = data['entry'][0]['changes'][0]['value']
+            
+            if 'messages' in mensaje_data:
+                mensaje = mensaje_data['messages'][0]['text']['body']
+                numero_remitiente = mensaje_data['messages'][0]['from'] # <--- Corregido aquí la variable
+                
+                print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitiente}: {mensaje}")
+                
+                # Llamamos a la misma Mily
+                respuesta_ia = generar_respuesta_mily(str(numero_remitiente), mensaje)
+                print(f"🤖 [Mily Respuesta]: {respuesta_ia}")
+                
+                # Aquí iría tu función de envío para WhatsApp cuando la configures
+                
+    except Exception as e:
+        print(f"❌ [Bloque 9 - WhatsApp] Error: {e}")
         
     return jsonify({"status": "ok"}), 200
 
