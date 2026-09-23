@@ -340,10 +340,34 @@ def webhook_whatsapp_bloque8():
 
 
 # ============================================================
-# BLOQUE 9 — RUTAS Y WEBHOOKS DE TELEGRAM
+# BLOQUE 9 — RUTAS Y WEBHOOKS DE TELEGRAM (TEXTO E IMÁGENES)
 # ============================================================
 
-# --- 1. RUTA PARA TELEGRAM ---
+def enviar_mensaje_telegram(chat_id, texto_respuesta):
+    """
+    Envía una respuesta de texto al chat de Telegram del usuario.
+    """
+    if not TELEGRAM_API_URL:
+        print("⚠ [Bloque 9] Falta el token de Telegram (TELEGRAM_TOKEN).")
+        return
+
+    url = f"{TELEGRAM_API_URL}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": texto_respuesta,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print(f"✅ [Telegram] Mensaje enviado con éxito a {chat_id}")
+        else:
+            print(f"❌ [Telegram] Error al enviar mensaje: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"❌ [Bloque 9] Excepción al enviar mensaje a Telegram: {e}")
+
+
 @app.route('/webhook/telegram', methods=['POST'])
 def webhook_telegram():
     data = request.get_json()
@@ -351,44 +375,47 @@ def webhook_telegram():
         if "message" in data:
             message_data = data["message"]
             chat_id = message_data["chat"]["id"]
-            mensaje = message_data.get("text", message_data.get("caption", ""))
             
+            # 1. DETECTAR EL TIPO DE CONTENIDO
+            mensaje = ""
+            tipo_contenido = "texto"
+            file_id = None
+
+            # Si mandó una foto
+            if "photo" in message_data:
+                tipo_contenido = "imagen"
+                # Telegram manda un arreglo de fotos de menor a mayor resolución. Tomamos la última.
+                foto_info = message_data["photo"][-1]
+                file_id = foto_info["file_id"]
+                # Si escribió algo junto con la foto, lo capturamos como texto/caption
+                mensaje = message_data.get("caption", "[El usuario envió una imagen sin texto]")
+                print(f"📷 [Telegram] Imagen recibida de {chat_id}. Archivo ID: {file_id}")
+
+            # Si mandó un documento o archivo
+            elif "document" in message_data:
+                tipo_contenido = "documento"
+                doc_info = message_data["document"]
+                file_id = doc_info["file_id"]
+                mensaje = message_data.get("caption", f"[El usuario envió un documento: {doc_info.get('file_name', 'archivo')}]")
+                print(f"📁 [Telegram] Documento recibido de {chat_id}")
+
+            # Si es un mensaje de texto normal
+            elif "text" in message_data:
+                mensaje = message_data["text"]
+                print(f"📩 [Telegram] Texto recibido de {chat_id}: {mensaje}")
+
+            # 2. PROCESAR CON MILY (IA)
             if mensaje:
-                print(f"📩 [Telegram] Mensaje recibido de {chat_id}: {mensaje}")
+                # Aquí más adelante puedes pasarle el file_id a Gemini si quieres que analice la imagen.
+                # Por ahora, Mily responderá al texto o al aviso de que llegó una imagen.
                 respuesta_ia = generar_respuesta_mily(str(chat_id), mensaje)
                 print(f"🤖 [Mily Respuesta]: {respuesta_ia}")
+                
+                # 3. RESPONDER AL USUARIO
                 enviar_mensaje_telegram(chat_id, respuesta_ia)
+                
     except Exception as e:
-        print(f"❌ [Bloque 9 - Telegram] Error: {e}")
-        
-    return jsonify({"status": "ok"}), 200
-
-
-# --- 2. RUTA PARA WHATSAPP / META (Futuro) ---
-@app.route('/webhook', methods=['GET', 'POST'])
-def webhook_whatsapp_meta():  # <--- Nombre único para evitar choques
-    if request.method == 'GET':
-        verify_token = os.environ.get("VERIFY_TOKEN", "tu_token_secreto")
-        mode = request.args.get("hub.mode")
-        token = request.args.get("hub.verify_token")
-        challenge = request.args.get("hub.challenge")
-        
-        if mode and token and mode == "subscribe" and token == verify_token:
-            return challenge, 200
-        return "Verificación fallida", 403
-
-    data = request.get_json()
-    try:
-        if 'entry' in data and 'changes' in data['entry'][0]:
-            mensaje_data = data['entry'][0]['changes'][0]['value']
-            if 'messages' in mensaje_data:
-                mensaje = mensaje_data['messages'][0]['text']['body']
-                numero_remitiente = mensaje_data['messages'][0]['from']
-                print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitiente}: {mensaje}")
-                respuesta_ia = generar_respuesta_mily(str(numero_remitiente), mensaje)
-                print(f"🤖 [Mily Respuesta]: {respuesta_ia}")
-    except Exception as e:
-        print(f"❌ [Bloque 9 - WhatsApp] Error: {e}")
+        print(f"❌ [Bloque 9 - Telegram] Error procesando mensaje: {e}")
         
     return jsonify({"status": "ok"}), 200
 
