@@ -327,7 +327,7 @@ def webhook_whatsapp():
                     mensaje = mensaje_data['messages'][0]['text']['body']
                     numero_remitente = mensaje_data['messages'][0]['from']
                     
-                    print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitiente}: {mensaje}" if 'numero_remitient' in locals() else f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}")
+                    print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}" if 'numero_remitente' in locals() else f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}")
                     
                     contexto_actual = ""
                     
