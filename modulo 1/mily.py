@@ -219,9 +219,9 @@ def limpiar_historial_usuario(user_id):
 # ============================================================
 
 from google import genai
+from google.genai import types
 
 api_key = os.environ.get("GEMINI_API_KEY")
-# Inicializamos el cliente de genai correctamente
 client = genai.Client(api_key=api_key)
 MODELO_GEMINI = "gemini-2.5-flash"
 
@@ -237,19 +237,20 @@ def generar_respuesta_mily(user_id, mensaje_usuario, contexto_drive=""):
             "profesional y orientada a concretar ventas o agendar asesorías."
         )
 
-        model = genai.GenerativeModel(
-            model_name=MODELO_GEMINI,
-            system_instruction=system_instruction
-        )
-
         historial = obtener_historial_usuario(user_id)
 
         prompt_completo = mensaje_usuario
         if contexto_drive:
             prompt_completo = f"[Información de catálogos de Drive]: {contexto_drive}\n\n[Mensaje del cliente]: {mensaje_usuario}"
 
-        chat = model.start_chat(history=historial)
-        respuesta = chat.send_message(prompt_completo)
+        respuesta = client.models.generate_content(
+            model=MODELO_GEMINI,
+            contents=prompt_completo,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction
+            )
+        )
+        
         texto_respuesta = respuesta.text
 
         registrar_mensaje_historial(user_id, "user", mensaje_usuario)
@@ -260,7 +261,7 @@ def generar_respuesta_mily(user_id, mensaje_usuario, contexto_drive=""):
     except Exception as e:
         print(f"❌ [Bloque 6] Error al generar respuesta con Gemini: {e}")
         return "Disculpa, ocurrió un error procesando tu solicitud en este momento. Por favor, intenta de nuevo más tarde."
-
+    
 
 # ============================================================
 # BLOQUE 7 — ENVÍO DE MENSAJES A WHATSAPP (META API)
