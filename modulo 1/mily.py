@@ -111,7 +111,7 @@ def obtener_servicio_drive():
         print(f"✖ [Bloque 4] Error al conectar con Google Drive: {e}")
         return None
 
-DRIVE_FOLDER_ID = "13DTk5zWfh31fb0gt6otHhLKau72tubzT"
+DRIVE_FOLDER_ID = "1qWEAo8wv7bWTXWX272SsQVVZpgtkLjbe"
 
 def listar_archivos_catalogo():
     servicio = obtener_servicio_drive()
@@ -173,14 +173,14 @@ from google.genai import types
 import os
 
 api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key)
+client = genai.Client(api_key=api_key) if api_key else None
 MODELO_GEMINI = "gemini-2.5-flash"
 
 # Diccionario para mantener la memoria de chat por cada usuario (evita la amnesia)
 sesiones_chat = {}
 
 def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto_drive=""):
-    if not api_key:
+    if not client:
         return "Lo siento, en este momento tengo un problema temporal de configuración con mi inteligencia artificial."
 
     try:
@@ -225,7 +225,12 @@ Cuando tengas los datos completos, indícale que le pasarás el caso al Maestro 
         chat = sesiones_chat[user_id]
 
         # Preparar el contenido del mensaje (texto + opcional imagen)
-        contenido = [mensaje_usuario]
+        contenido = []
+        if mensaje_usuario:
+            contenido.append(mensaje_usuario)
+        else:
+            contenido.append("Hola, te envío esta referencia visual de mi proyecto en hierro:")
+
         if imagen_bytes:
             contenido.append(
                 types.Part.from_bytes(
@@ -239,34 +244,8 @@ Cuando tengas los datos completos, indícale que le pasarás el caso al Maestro 
         return response.text
 
     except Exception as e:
-        print(f"Error generando respuesta con Mily: {e}")
-        # Si ocurre un fallo crítico de conexión con la imagen, evitamos que el bot muera
-        return "¡Hola! Entiendo tu solicitud sobre nuestros trabajos en hierro de IRONWORKS HRs. En este momento estoy procesando tu imagen, por favor dime las medidas aproximadas de tu proyecto para ayudarte con la cotización."
-
-        historial = obtener_historial_usuario(user_id)
-
-        prompt_completo = mensaje_usuario
-        if contexto_drive:
-            prompt_completo = f"[Información de catálogos de Drive]: {contexto_drive}\n\n[Mensaje del cliente]: {mensaje_usuario}"
-
-        respuesta = client.models.generate_content(
-            model=MODELO_GEMINI,
-            contents=prompt_completo,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction
-            )
-        )
-        
-        texto_respuesta = respuesta.text
-
-        registrar_mensaje_historial(user_id, "user", mensaje_usuario)
-        registrar_mensaje_historial(user_id, "model", texto_respuesta)
-
-        return texto_respuesta
-
-    except Exception as e:
-        print(f"❌ [Bloque 6] Error al generar respuesta con Gemini: {e}")
-        return "Disculpa, ocurrió un error procesando tu solicitud en este momento. Por favor, intenta de nuevo más tarde."
+        print(f"❌ [Bloque 6] Error generando respuesta con Mily: {e}")
+        return "¡Hola! Entiendo tu solicitud sobre nuestros trabajos en hierro de IRONWORKS HRs. Por favor dime las medidas aproximadas de tu proyecto para ayudarte con la cotización."
     
 
 # ============================================================
