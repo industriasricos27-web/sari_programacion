@@ -11,17 +11,14 @@ import os
 import requests
 from flask import Flask, jsonify, request
 
-# 1.1 — IDENTIDAD DEL SISTEMA
 MILY_NOMBRE = "Mily"
-MILY_VERSION = "3.0"
+MILY_VERSION = "3.1"
 EMPRESA_NOMBRE = "IRONWORKS HR"
 EMPRESA_DESCRIPCION = "Hermanos Rico Diseño y Estructura"
 
-# 1.2 — CONFIGURACIÓN DEL SERVIDOR
 HOST = "0.0.0.0"
 PUERTO = int(os.environ.get("PORT", 5000))
 
-# 1.3 — CREACIÓN DE LA APLICACIÓN
 app = Flask(__name__)
 
 @app.route("/", methods=["GET"])
@@ -149,20 +146,6 @@ def obtener_historial_usuario(user_id):
         HISTORIALES_CONVERSACION[user_id] = []
     return HISTORIALES_CONVERSACION[user_id]
 
-def registrar_mensaje_historial(user_id, rol, texto):
-    historial = obtener_historial_usuario(user_id)
-    historial.append({
-        "role": rol,
-        "parts": [{"text": texto}]
-    })
-    if len(historial) > (LIMITE_HISTORIAL * 2):
-        HISTORIALES_CONVERSACION[user_id] = historial[-(LIMITE_HISTORIAL * 2):]
-
-def limpiar_historial_usuario(user_id):
-    if user_id in HISTORIALES_CONVERSACION:
-        HISTORIALES_CONVERSACION[user_id] = []
-        print(f"✓ [Bloque 5] Historial reiniciado para el usuario: {user_id}")
-
 
 # ============================================================
 # BLOQUE 6 — CONFIGURACIÓN DEL MODELO GEMINI Y PROMPT DE MILY
@@ -170,13 +153,11 @@ def limpiar_historial_usuario(user_id):
 
 from google import genai
 from google.genai import types
-import os
 
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
 MODELO_GEMINI = "gemini-2.5-flash"
 
-# Diccionario para mantener la memoria de chat por cada usuario (evita la amnesia)
 sesiones_chat = {}
 
 def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto_drive=""):
@@ -184,7 +165,6 @@ def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto
         return "Lo siento, en este momento tengo un problema temporal de configuración con mi inteligencia artificial."
 
     try:
-        # Configurar instrucciones del sistema limpias y enfocadas en el taller real
         system_instruction = """
 Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística, portones, rejas, separadores y mobiliario minimalista dirigido por los hermanos Rico.
 
@@ -194,7 +174,7 @@ Cuando un cliente te envíe una foto o referencia visual:
 - Nunca alucines ni inventes objetos que no correspondan al metal (por ejemplo, nunca digas que es una cama si te mandan un portón o una reja). Adapta la cotización estrictamente a la estructura de hierro que se ve en la imagen.
 
 === CATÁLOGO VISUAL Y REDES SOCIALES ===
-- **Cuando el cliente pida ver fotos, modelos o el catálogo:** Comparte nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (explícale que allí tenemos nuestra vitrina visual de separadores, portones y trabajos en hierro, sin cambiar ninguna letra ni número).
+- **Когда el cliente pida ver fotos, modelos o el catálogo:** Comparte nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (explícale que allí tenemos nuestra vitrina visual de separadores, portones y trabajos en hierro, sin cambiar ninguna letra ni número).
 
 === FILOSOFÍA DE FABRICACIÓN ===
 - Todo se fabrica **bajo pedido** (nada de entrega inmediata). El tiempo estimado de producción es de mínimo 3 días hábiles en adelante.
@@ -212,7 +192,6 @@ Cuando un cliente te envíe una foto o referencia visual:
 Cuando tengas los datos completos, indícale que le pasarás el caso al Maestro Andrés para la cotización formal con pago contra entrega (sin anticipos).
 """
 
-        # Obtener o crear una sesión de chat persistente para este usuario (Memoria contra la amnesia)
         if user_id not in sesiones_chat:
             sesiones_chat[user_id] = client.chats.create(
                 model=MODELO_GEMINI,
@@ -224,7 +203,6 @@ Cuando tengas los datos completos, indícale que le pasarás el caso al Maestro 
         
         chat = sesiones_chat[user_id]
 
-        # Preparar el contenido del mensaje (texto + opcional imagen)
         contenido = []
         if mensaje_usuario:
             contenido.append(mensaje_usuario)
@@ -239,14 +217,13 @@ Cuando tengas los datos completos, indícale que le pasarás el caso al Maestro 
                 )
             )
 
-        # Enviar mensaje a la sesión activa manteniendo el hilo de la conversación
         response = chat.send_message(contenido)
         return response.text
 
     except Exception as e:
         print(f"❌ [Bloque 6] Error generando respuesta con Mily: {e}")
         return "¡Hola! Entiendo tu solicitud sobre nuestros trabajos en hierro de IRONWORKS HRs. Por favor dime las medidas aproximadas de tu proyecto para ayudarte con la cotización."
-    
+
 
 # ============================================================
 # BLOQUE 7 — ENVÍO DE MENSAJES (WHATSAPP Y TELEGRAM)
@@ -274,7 +251,7 @@ def enviar_mensaje_whatsapp(numero_destino, texto_respuesta):
         if response.status_code == 200:
             print(f"✅ [WhatsApp] Mensaje enviado a {numero_destino}")
         else:
-            print(f"❌ [WhatsApp] Error: {response.status_code} - {response.text}")
+            print(f"❌ [WhatsApp] Error: {response.status_code} {response.text}")
     except Exception as e:
         print(f"❌ [Bloque 7] Excepción en WhatsApp: {e}")
 
@@ -296,13 +273,13 @@ def enviar_mensaje_telegram(chat_id, texto_respuesta):
         if response.status_code == 200:
             print(f"✅ [Telegram] Mensaje enviado a {chat_id}")
         else:
-            print(f"❌ [Telegram] Error: {response.status_code} - {response.text}")
+            print(f"❌ [Telegram] Error: {response.status_code} {response.text}")
     except Exception as e:
         print(f"❌ [Bloque 7] Excepción en Telegram: {e}")
 
 
 # ============================================================
-# BLOQUE 8 — WEBHOOK DE WHATSAPP (RUTAS SEPARADAS Y SEGURAS)
+# BLOQUE 8 — WEBHOOK DE WHATSAPP
 # ============================================================
 
 @app.route('/webhook/whatsapp', methods=['GET', 'POST'])
@@ -323,11 +300,21 @@ def webhook_whatsapp_meta():
             if 'entry' in data and 'changes' in data['entry'][0]:
                 mensaje_data = data['entry'][0]['changes'][0]['value']
                 if 'messages' in mensaje_data:
-                    mensaje = mensaje_data['messages'][0]['text']['body']
-                    numero_remitente = mensaje_data['messages'][0]['from']
+                    msg_obj = mensaje_data['messages'][0]
+                    numero_remitente = msg_obj['from']
+                    
+                    # Manejar texto o imagen en WhatsApp
+                    mensaje = ""
+                    imagen_bytes = None
+                    
+                    if 'text' in msg_obj:
+                        mensaje = msg_obj['text']['body']
+                    elif 'image' in msg_obj:
+                        mensaje = msg_obj.get('caption', "Te envío esta imagen de referencia")
+                        # Aquí puedes agregar la lógica para descargar la imagen de WhatsApp si lo requieres
                     
                     print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}")
-                    respuesta_ia = generar_respuesta_mily(numero_remitente, mensaje)
+                    respuesta_ia = generar_respuesta_mily(numero_remitente, mensaje, imagen_bytes)
                     enviar_mensaje_whatsapp(numero_remitente, respuesta_ia)
         except Exception as e:
             print(f"❌ [Bloque 8] Error procesando mensaje de WhatsApp: {e}")
@@ -348,39 +335,29 @@ def webhook_telegram():
             chat_id = message_data["chat"]["id"]
             mensaje = message_data.get("text", message_data.get("caption", ""))
             
-            if mensaje:
-                print(f"📩 [Telegram] Mensaje recibido de {chat_id}: {mensaje}")
-                respuesta_ia = generar_respuesta_mily(str(chat_id), mensaje)
+            imagen_bytes = None
+            # Si el usuario envía una foto en Telegram, la descargamos para pasársela a Mily
+            if "photo" in message_data:
+                try:
+                    file_id = message_data["photo"][-1]["file_id"]
+                    file_info_url = f"{TELEGRAM_API_URL}/getFile?file_id={file_id}"
+                    file_info_res = requests.get(file_info_url).json()
+                    if file_info_res.get("ok"):
+                        file_path = file_info_res["result"]["file_path"]
+                        download_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+                        img_res = requests.get(download_url)
+                        if img_res.status_code == 200:
+                            imagen_bytes = img_res.content
+                except Exception as img_err:
+                    print(f"⚠ [Telegram] No se pudo descargar la foto adjunta: {img_err}")
+
+            if mensaje or imagen_bytes:
+                print(f"📩 [Telegram] Mensaje recibido de {chat_id}: {mensaje or '[Foto sin texto]'}")
+                respuesta_ia = generar_respuesta_mily(str(chat_id), mensaje, imagen_bytes)
                 enviar_mensaje_telegram(chat_id, respuesta_ia)
                 
     except Exception as e:
         print(f"❌ [Bloque 9 - Telegram] Error: {e}")
-        
-    return jsonify({"status": "ok"}), 200
-
-
-@app.route('/webhook', methods=['GET', 'POST'])
-def webhook_whatsapp_raiz():
-    if request.method == 'GET':
-        mode = request.args.get("hub.mode")
-        token = request.args.get("hub.verify_token")
-        challenge = request.args.get("hub.challenge")
-        
-        if mode and token and mode == "subscribe" and token == VERIFY_TOKEN:
-            return challenge, 200
-        return "Verificación fallida", 403
-
-    data = request.get_json()
-    try:
-        if 'entry' in data and 'changes' in data['entry'][0]:
-            mensaje_data = data['entry'][0]['changes'][0]['value']
-            if 'messages' in mensaje_data:
-                mensaje = mensaje_data['messages'][0]['text']['body']
-                numero_remitente = mensaje_data['messages'][0]['from']
-                print(f"📩 [WhatsApp Root] Mensaje recibido de {numero_remitente}: {mensaje}")
-                respuesta_ia = generar_respuesta_mily(str(numero_remitente), mensaje)
-    except Exception as e:
-        print(f"❌ [Bloque 9 - Root] Error: {e}")
         
     return jsonify({"status": "ok"}), 200
 
