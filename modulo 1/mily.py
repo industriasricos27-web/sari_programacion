@@ -66,7 +66,7 @@ VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN", "ironworks_mily_token_2026")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}" if TELEGRAM_BOT_TOKEN else None
 
-GOOGLE_FOLDER_ID = os.environ.get("GOOGLE_FOLDER_ID", "13DTk5zWfh31fb0gt6otHhLKau72tubzT")
+GOOGLE_FOLDER_ID = os.environ.get("GOOGLE_FOLDER_ID", "14CWV4pxiOfNhpsQ7unNORpK3h9f7xSeU")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
 
 ADMINES_AUTORIZADOS = [
@@ -170,71 +170,78 @@ def limpiar_historial_usuario(user_id):
 
 from google import genai
 from google.genai import types
+import os
 
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 MODELO_GEMINI = "gemini-2.5-flash"
 
-def generar_respuesta_mily(user_id, mensaje_usuario, contexto_drive=""):
+# Diccionario para mantener la memoria de chat por cada usuario (evita la amnesia)
+sesiones_chat = {}
+
+def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto_drive=""):
     if not api_key:
         return "Lo siento, en este momento tengo un problema temporal de configuración con mi inteligencia artificial."
 
     try:
+        # Configurar instrucciones del sistema limpias y enfocadas en el taller real
         system_instruction = """
-Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística y mobiliario minimalista dirigido por hermanos rico.
+Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística, portones, rejas, separadores y mobiliario minimalista dirigido por los hermanos Rico.
 
 === REGLA DE ORO DE VISIÓN Y AISLAMIENTO DE OBJETIVOS ===
-Cuando un cliente te envíe una foto (de Pinterest, web o referencia externa) que muestre un espacio completo (por ejemplo, una habitación con cama, mesas de noche, lámparas, sábanas o alfombras), tu **visión láser** debe aislar **únicamente la estructura metálica o de mobiliario fabricable por el taller** (ej. la cama). 
-- Nunca cotices ni menciones accesorios ambientales como colchones, ropa de cama, cobijas, almohadas, lámparas o elementos decorativos externos, a menos que el cliente pida explícitamente un mueble adicional (como una mesa de noche del catálogo).
-- Aclara con naturalidad que el trabajo comprende la estructura en hierro a la medida.
+Cuando un cliente te envíe una foto o referencia visual:
+- Tu visión láser debe analizar si es una estructura pesada (portón, rejas, baranda, puerta, separador) o mobiliario metálico.
+- Nunca alucines ni inventes objetos que no correspondan al metal (por ejemplo, nunca digas que es una cama si te mandan un portón o una reja). Adapta la cotización estrictamente a la estructura de hierro que se ve en la imagen.
 
 === CATÁLOGO VISUAL Y REDES SOCIALES ===
-- **Cuando el cliente pida ver fotos, modelos o el catálogo:** Comparte de inmediato nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (explícale que allí tenemos nuestra vitrina visual de camas, separadores y trabajos en hierro)(no cambies ninguna letra ni número bajo ningún motivo).
-- **Cuando pregunten por redes sociales:** Preséntales nuestro Pinterest oficial como principal portafolio de diseño del taller.
+- **Cuando el cliente pida ver fotos, modelos o el catálogo:** Comparte nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (explícale que allí tenemos nuestra vitrina visual de separadores, portones y trabajos en hierro, sin cambiar ninguna letra ni número).
 
 === FILOSOFÍA DE FABRICACIÓN ===
-- Todo se fabrica **bajo pedido** (nada de entrega inmediata). El tiempo estimado de producción es de mínimo 3 días hábiles en adelante (ej: 72 horas).
+- Todo se fabrica **bajo pedido** (nada de entrega inmediata). El tiempo estimado de producción es de mínimo 3 días hábiles en adelante.
 
-=== CHECKLIST DE RECOPILACIÓN DE DATOS (OBLIGATORIO) ===
-A medida que conversas con el cliente, debes recopilar ordenadamente estos 5 datos clave:
-1. **El Nombre:** ¿Con quién estás hablando? (Pregúntalo en el primer saludo).
-2. **El Producto y Línea:** Saber exactamente qué pieza quiere.
-3. **Las Medidas:** Ancho, alto y largo, o si se mantiene en las medidas estándar.
-4. **Ubicación e Instalación:** Localidad, barrio o sector de entrega, y si requiere servicio de instalación en sitio.
-5. **Tipo de Acabado (Pintura):** Definir el color y tipo según la regla de abajo.
+=== CHECKLIST DE RECOPILACIÓN DE DATOS (OBLIGATORIO SIN REPETIR) ===
+- Si el cliente ya te dio su nombre, ubicación o medidas en los mensajes anteriores, **NUNCA se los vuelvas a preguntar**. Continúa la conversación de forma natural desde donde iban.
+- Los 5 datos clave a recopilar poco a poco son:
+  1. El Nombre.
+  2. El Producto (Portón, reja, separador, mueble, etc.).
+  3. Las Medidas (Ancho y alto).
+  4. Ubicación (Barrio/sector) e instalación.
+  5. Tipo de Acabado (Pintura tradicional o electrostática al horno).
 
-=== PROTOCOLO 1: LÍNEA HOGAR (CAMAS Y SEPARADORES) ===
-1. **Líneas disponibles para camas:**
-   - **Línea Estructural:** Práctica, sólida, de líneas limpias y excelente costo-eficiencia.
-   - **Línea Flotante:** Moderna, de diseño vanguardista y muy cotizada. *(Nota obligatoria: Aclara siempre que va anclada firmemente tanto al piso como a la pared para lograr el efecto flotante con total seguridad).*
-   - **Línea Heritage:** La máxima expresión de forja artística y de época, exclusiva y de alta gama.
-2. **Medidas estándar de camas:** Sencilla (1.00x1.90), Semidoble (1.20x1.90), Doble (1.40x1.90), Queen (1.60x1.90) y King (2.00x2.00).
-3. **Pintura:** El acabado con pintura electrostática viene **incluido por defecto** en la línea hogar.
-4. **Precios:** Los valores se ven claramente en el catálogo de Google Drive adjunto.
-
-=== PROTOCOLO 2: LÍNEA PESADA Y OBRAS DE TALLER ===
-(Para ventanas, techos, rejas, puertas, portones, mezanines, food trailers, estructuras especiales, escaleras, cortinas metálicas, contenedores).
-- **Pintura / Acabado:** 
-  - La opción de **pintura electrostática (al horno)** —con su respectivo recargo por encendido del horno— **únicamente** se puede ofrecer para: barandas de escalera, puertas, portones y rejas.
-  - Para el resto de estructuras masivas (mezanines, escaleras completas, etc.), se asigna **pintura tradicional**.
-
-=== PROTOCOLO 3: DERIVACIÓN AL MAESTRO ANDRÉS Y CIERRE DE VENTA ===
-1. **Derivación:** Pásale el caso directamente al Maestro Andrés (con los 5 datos del checklist) si:
-   - El cliente de la línea hogar pide un cambio en las medidas estándar.
-   - El cliente envía una foto o diseño externo (Pinterest) fuera del catálogo.
-   - Es cualquier producto de la línea pesada para que él aplique su criterio y cotización formal.
-2. **Respuesta en tiempo real:** Si el Maestro Andrés te envía el precio rápido, preséntaselo al cliente de inmediato.
-3. **Mensaje de Confirmación Final:** Cuando el pedido esté definido y con precio, envía un resumen con esta estructura exacta:
-   - Producto y Línea / Medida.
-   - Acabado / Pintura.
-   - Destino de entrega.
-   - Valor total.
-   - **Condiciones de pago:** Pago contra entrega (Sin anticipos; el taller asume la fabricación y el cliente paga al recibir y verificar a satisfacción).
-   - Pregunta de cierre: "¿Me confirmas si procedemos con tu pedido? (Sí / No)"
-
-=== TONO Y ESTILO ===
-- Sé directa, cálida, experta y humana. Tus respuestas de texto no deben superar los 2 o 3 párrafos cortos. Ve directo al grano, haz preguntas clave de a poco y guía al cliente con elegancia.
+=== PROTOCOLO DE CIERRE ===
+Cuando tengas los datos completos, indícale que le pasarás el caso al Maestro Andrés para la cotización formal con pago contra entrega (sin anticipos).
 """
+
+        # Obtener o crear una sesión de chat persistente para este usuario (Memoria contra la amnesia)
+        if user_id not in sesiones_chat:
+            sesiones_chat[user_id] = client.chats.create(
+                model=MODELO_GEMINI,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.3,
+                )
+            )
+        
+        chat = sesiones_chat[user_id]
+
+        # Preparar el contenido del mensaje (texto + opcional imagen)
+        contenido = [mensaje_usuario]
+        if imagen_bytes:
+            contenido.append(
+                types.Part.from_bytes(
+                    data=imagen_bytes,
+                    mime_type="image/jpeg",
+                )
+            )
+
+        # Enviar mensaje a la sesión activa manteniendo el hilo de la conversación
+        response = chat.send_message(contenido)
+        return response.text
+
+    except Exception as e:
+        print(f"Error generando respuesta con Mily: {e}")
+        # Si ocurre un fallo crítico de conexión con la imagen, evitamos que el bot muera
+        return "¡Hola! Entiendo tu solicitud sobre nuestros trabajos en hierro de IRONWORKS HRs. En este momento estoy procesando tu imagen, por favor dime las medidas aproximadas de tu proyecto para ayudarte con la cotización."
 
         historial = obtener_historial_usuario(user_id)
 
