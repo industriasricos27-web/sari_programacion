@@ -12,7 +12,7 @@ import requests
 from flask import Flask, jsonify, request
 
 MILY_NOMBRE = "Mily"
-MILY_VERSION = "3.1"
+MILY_VERSION = "3.2"
 EMPRESA_NOMBRE = "IRONWORKS HR"
 EMPRESA_DESCRIPCION = "Hermanos Rico Diseño y Estructura"
 
@@ -110,28 +110,30 @@ def obtener_servicio_drive():
 
 DRIVE_FOLDER_ID = "1qWEAo8wv7bWTXWX272SsQVVZpgtkLjbe"
 
-def listar_archivos_catalogo():
+def obtener_contexto_archivos_drive():
     servicio = obtener_servicio_drive()
     if not servicio:
-        return []
+        return "No hay conexión con Google Drive en este momento."
         
     try:
         query = f"'{DRIVE_FOLDER_ID}' in parents and trashed = false"
         resultados = servicio.files().list(
             q=query,
-            pageSize=10,
+            pageSize=50,
             fields="files(id, name, mimeType)"
         ).execute()
         
         archivos = resultados.get('files', [])
-        if archivos:
-            print(f"✓ [Bloque 4] Se encontraron {len(archivos)} archivos en la subcarpeta de catálogos.")
-        return archivos
+        if not archivos:
+            return "No se encontraron archivos en la carpeta de inventario."
+            
+        lista_nombres = [f"- {archivo['name']}" for archivo in archivos]
+        contexto = "FOTOS Y FICHAS TÉCNICAS OFICIALES REGISTRADAS EN GOOGLE DRIVE:\n" + "\n".join(lista_nombres)
+        print(f"✓ [Bloque 4] Se cargaron {len(archivos)} referencias de fotos y fichas de Google Drive para Mily.")
+        return contexto
     except Exception as e:
         print(f"❌ [Bloque 4] Error al listar archivos de la subcarpeta: {e}")
-        return []
-
-listar_archivos_catalogo()
+        return "Error al recuperar las referencias de Google Drive."
 
 
 # ============================================================
@@ -165,24 +167,27 @@ def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto
         return "Lo siento, en este momento tengo un problema temporal de configuración con mi inteligencia artificial."
 
     try:
-        system_instruction = """
+        # Cargamos dinámicamente los nombres de tus fotos y fichas técnicas desde Google Drive
+        contexto_drive_actual = obtener_contexto_archivos_drive()
+
+        system_instruction = f"""
 Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística, portones, rejas, separadores y mobiliario minimalista dirigido por los hermanos Rico.
 
+{contexto_drive_actual}
+
 === REGLAS DE ORO DE IDENTIDAD Y MEMORIA ===
-1. **Cero redundancias:** Si ya saludaste al cliente y te dio su nombre en un mensaje anterior, NUNCA vuelvas a decir "Soy Mily, la asesora...". Dirígete a él o ella por su nombre de forma directa y natural (ej: "¡Hola, Leidi!").
+1. **Cero redundancias:** Si ya saludaste al cliente y te dio su nombre en un mensaje anterior, NUNCA vuelvas a decir "Soy Mily, la asesora...". Dirígete a él o ella por su nombre de forma directa y natural (ej: "¡Hola, Leidi!"). Retoma la conversación con naturalidad así hayan pasado horas o días.
 2. **Memoria absoluta:** Recuerda siempre los datos que el cliente te ha dado en el hilo de la conversación. No vuelvas a preguntar lo que ya se habló.
 
-=== REGLA DE ORO DE PRODUCTOS ESTÁNDAR VS A LA MEDIDA ===
+=== PROTOCOLO DE VISIÓN Y FOTOS DE PRODUCTOS ESTÁNDAR ===
 Cuando el cliente envíe una foto de referencia:
-- Analiza si corresponde a un producto estandarizado de nuestro catálogo (como nuestros separadores o portones de línea). 
-- **Si es un producto de catálogo con precio fijo:** Dúctilmente indícale de inmediato su valor de referencia, la medida estándar en la que viene (ej: 2x1 metros) y lo que incluye (como la pintura electrostática), sin necesidad de enviarlo con el Maestro Andrés a cotizar desde cero, a menos que pida una modificación en las dimensiones.
-- **Si es una estructura especial, pesada o fuera de catálogo:** Aplica el protocolo de recolección de datos (medidas, zona, acabado) para pasárselo al Maestro Andrés.
+- Analiza la imagen con tu visión y compárala con los códigos, nombres de las fotos y fichas técnicas disponibles en Google Drive (ej: códigos PYP para portones, LIN o GEO para separadores).
+- **Si la foto corresponde a un producto estándar de nuestras fotos y fichas técnicas:** Salúdalo por su nombre, indícale de inmediato el código del producto, su precio base de referencia, la medida estándar en la que viene (ej: 2x1 metros) y lo que incluye (como la pintura electrostática). No lo mandes a cotizar con el maestro si es un producto estándar listo para pedir.
+- **Si el cliente pide ver más fotos o diseños:** Ofrécele enviarle opciones adicionales de nuestros códigos guardados o comparte nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (sin cambiar ninguna letra ni número).
+- **Si el cliente quiere una modificación especial, medidas personalizadas o envía una foto totalmente ajena/especial (como una escalera o diseño a medida):** Recopila los datos clave poco a poco (Medidas ancho/alto, ubicación/barrio, tipo de acabado) y explícale que le pasarás el caso al Maestro Andrés para la cotización formal.
 
-=== CATÁLOGO VISUAL Y REDES SOCIALES ===
-- **Cuando el cliente pida ver más fotos o modelos:** Comparte nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (sin cambiar ninguna letra ni número).
-
-=== FILOSOFÍA DE FABRICACIÓN ===
-- Todo se fabrica bajo pedido. El tiempo estimado de producción es de mínimo 3 días hábiles.
+=== FILOSOFÍA DE FABRICACIÓN Y PAGOS ===
+- Todo se fabrica bajo pedido (mínimo 3 días hábiles en adelante).
 - **Condiciones de pago:** Pago contra entrega (Sin anticipos; el taller asume la fabricación y el cliente paga al recibir y verificar a satisfacción).
 """
 
@@ -294,7 +299,7 @@ def webhook_whatsapp_meta():
             if 'entry' in data and 'changes' in data['entry'][0]:
                 mensaje_data = data['entry'][0]['changes'][0]['value']
                 if 'messages' in mensaje_data:
-                    msg_obj = mensaje_data['messages'][0]
+                    msg_obj = mensaje_data['messages']
                     numero_remitente = msg_obj['from']
                     
                     # Manejar texto o imagen en WhatsApp
@@ -305,7 +310,6 @@ def webhook_whatsapp_meta():
                         mensaje = msg_obj['text']['body']
                     elif 'image' in msg_obj:
                         mensaje = msg_obj.get('caption', "Te envío esta imagen de referencia")
-                        # Aquí puedes agregar la lógica para descargar la imagen de WhatsApp si lo requieres
                     
                     print(f"📩 [WhatsApp] Mensaje recibido de {numero_remitente}: {mensaje}")
                     respuesta_ia = generar_respuesta_mily(numero_remitente, mensaje, imagen_bytes)
