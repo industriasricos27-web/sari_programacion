@@ -143,21 +143,9 @@ def obtener_contexto_archivos_drive():
         return "Error al recuperar las referencias de Google Drive."
 
 
-# ============================================================
-# BLOQUE 5 — MEMORIA Y GESTIÓN DE CONVERSACIONES
-# ============================================================
-
-HISTORIALES_CONVERSACION = {}
-LIMITE_HISTORIAL = 10
-
-def obtener_historial_usuario(user_id):
-    if user_id not in HISTORIALES_CONVERSACION:
-        HISTORIALES_CONVERSACION[user_id] = []
-    return HISTORIALES_CONVERSACION[user_id]
-
 
 # ============================================================
-# BLOQUE 6 — CONFIGURACIÓN DEL MODELO GEMINI Y PROMPT DE MILY
+# BLOQUE 5 y 6 — MEMORIA PERSISTENTE Y MODELO GEMINI
 # ============================================================
 
 from google import genai
@@ -167,7 +155,9 @@ api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
 MODELO_GEMINI = "gemini-2.5-flash"
 
-sesiones_chat = {}
+# Diccionario global robusto para almacenar el historial de mensajes por usuario
+HISTORIALES_CONVERSACION = {}
+LIMITE_HISTORIAL = 12  # Mantiene los últimos mensajes para no perder el hilo
 
 def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto_drive=""):
     if not client:
@@ -181,61 +171,66 @@ Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializad
 
 {contexto_drive_actual}
 
-=== REGLAS DE ORO DE IDENTIDAD Y MEMORIA ===
-1. **Cero redundancias:** Si ya saludaste al cliente y te dio su nombre en un mensaje anterior, NUNCA vuelvas a decir "Soy Mily, la asesora...". Dirígete a él o ella por su nombre de forma directa y natural (ej: "¡Hola, Leidi!"). Retoma la conversación con naturalidad así hayan pasado horas o días.
-2. **Memoria absoluta:** Recuerda siempre los datos que el cliente te ha dado en el hilo de la conversación. No vuelvas a preguntar lo que ya se habló.
+=== REGLAS DE ORO DE IDENTIDAD Y MEMORIA (ESTRICTAS) ===
+1. **Cero redundancias y Cero amnesias:** Ya conoces al cliente si su nombre ya apareció antes en la conversación. NUNCA vuelvas a decir "Soy Mily, la asesora..." si ya lo dijiste en los mensajes anteriores. Salúdalo por su nombre directamente (ej: "¡Hola, Óscar!"). 
+2. **Respuestas cortas y conversacionales:** No mandes Testamentos ni bloques de texto largos. Responde de forma natural, directa y humana, como un chat real de WhatsApp o Telegram. Ve paso a paso.
+3. **Memoria absoluta del hilo:** Recuerda lo que hablaron en los mensajes anteriores (nombre, tipo de producto, medidas, ubicación). No vuelvas a preguntar lo que ya te dijeron.
 
-=== PROTOCOLO DE VISIÓN Y FOTOS DE PRODUCTOS ESTÁNDAR ===
-Cuando el cliente envíe una foto de referencia:
-- Analiza la imagen con extrema atención a los detalles, identifica qué artículo es y compárala con los códigos, nombres de las fotos y fichas técnicas disponibles en Google Drive (ej: códigos PYP para puertas y portones, LIN, GEO, JV, o ORG para separadores). Si ves estructuras metálicas verticales con macetas, bandejas o vegetación, identifícala como **separador, jv jardinera o celosía metálica** (NUNCA la confundas con un portón o reja).
-- **Si la foto corresponde a un producto estándar de nuestras fotos y fichas técnicas:** Salúdalo por su nombre, indícale de inmediato el código del producto, su precio base de referencia, la medida estándar en la que viene (ej: 2x1 metros) y lo que incluye (como la pintura electrostática). No lo mandes a cotizar con el maestro si es un producto estándar listo para pedir.
-- **Si el cliente pide ver más fotos o diseños:** Ofrécele enviarle opciones adicionales de nuestros códigos guardados o comparte nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (sin cambiar ninguna letra ni número).
-- **Si el cliente quiere una modificación especial, medidas personalizadas o envía una foto totalmente ajena/especial (como una escalera o diseño a medida):** Recopila los datos clave poco a poco (Medidas ancho/alto, ubicación/barrio, tipo de acabado) y explícale que le avisarás al Maestro Andrés de inmediato para que revise el caso y le de su cotización formal.
+=== PROTOCOLO DE VISIÓN Y FOTOS ===
+- Si envían una foto de producto estándar, indícale su código, precio base y medida estándar.
+- Si piden medidas personalizadas o diseños especiales, recaba los datos y dile que le avisarás al Maestro Andrés de inmediato.
 
 === FILOSOFÍA DE FABRICACIÓN Y PAGOS ===
-- Todo se fabrica bajo pedido (mínimo 3 días hábiles en adelante).
-- **Condiciones de pago:** Pago contra entrega (Sin anticipos; el taller asume la fabricación y el cliente paga al recibir y verificar a satisfacción).
+- Todo se fabrica bajo pedido. 
+- Pago contra entrega (sin anticipos).
 """
 
-        if user_id not in sesiones_chat:
-            sesiones_chat[user_id] = client.chats.create(
-                model=MODELO_GEMINI,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.2,
-                )
-            )
-        
-        chat = sesiones_chat[user_id]
+        # Inicializar historial del usuario si no existe
+        if user_id not in HISTORIALES_CONVERSACION:
+            HISTORIALES_CONVERSACION[user_id] = []
 
-        contenido = []
+        # Agregar el mensaje actual del usuario al historial
         if mensaje_usuario:
-            contenido.append(mensaje_usuario)
+            HISTORIALES_CONVERSACION[user_id].append({"role": "user", "parts": [mensaje_usuario]})
         elif imagen_bytes:
-            contenido.append("Hola, te envío esta referencia visual de mi proyecto en hierro:")
+            HISTORIALES_CONVERSACION[user_id].append({
+                "role": "user", 
+                "parts": [
+                    "Te envío esta referencia visual de mi proyecto en hierro:",
+                    types.Part.from_bytes(data=imagen_bytes, mime_type="image/jpeg")
+                ]
+            })
 
-        if imagen_bytes:
-            contenido.append(
-                types.Part.from_bytes(
-                    data=imagen_bytes,
-                    mime_type="image/jpeg",
-                )
+        # Limitar el historial para que no crezca infinitamente
+        if len(HISTORIALES_CONVERSACION[user_id]) > LIMITE_HISTORIAL:
+            HISTORIALES_CONVERSACION[user_id] = HISTORIALES_CONVERSACION[user_id][-LIMITE_HISTORIAL:]
+
+        # Construir el contenido completo con el historial para enviárselo a Gemini
+        response = client.models.generate_content(
+            model=MODELO_GEMINI,
+            contents=HISTORIALES_CONVERSACION[user_id],
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.2,
             )
+        )
 
-        response = chat.send_message(contenido)
-        
-        # Detector inteligente: Si Mily menciona que le avisará al maestro/taller, disparamos la alerta por Telegram al Maestro Andrés
-        texto_respuesta = response.text
-        if any(palabra in texto_respuesta.lower() for palabra in ["maestro andrés", "le avisaré", "revisar el caso", "cotización formal", "con el maestro"]):
+        respuesta_texto = response.text
+
+        # Guardar la respuesta de Mily en el historial del usuario para mantener la memoria
+        HISTORIALES_CONVERSACION[user_id].append({"role": "model", "parts": [respuesta_texto]})
+
+        # Detector de avisos al taller por Telegram
+        if any(palabra in respuesta_texto.lower() for palabra in ["maestro andrés", "le avisaré", "revisar el caso", "cotización formal", "con el maestro"]):
             if TELEGRAM_MAESTRO_ANDRES:
-                alerta_taller = f"🔔 [Mily - Aviso al Taller]\nUn cliente (ID: {user_id}) requiere atención personalizada o cotización a medida.\nUltimo mensaje del cliente: '{mensaje_usuario}'\nMily respondió: '{texto_respuesta[:200]}...'"
+                alerta_taller = f"🔔 [Mily - Aviso al Taller]\nUn cliente (ID: {user_id}) requiere atención personalizada.\nÚltimo mensaje: '{mensaje_usuario}'\nMily respondió: '{respuesta_texto[:200]}...'"
                 enviar_mensaje_telegram(TELEGRAM_MAESTRO_ANDRES, alerta_taller)
 
-        return texto_respuesta
+        return respuesta_texto
 
     except Exception as e:
         print(f"❌ [Bloque 6] Error generando respuesta con Mily: {e}")
-        return "¡Hola! Entiendo tu solicitud sobre nuestros trabajos en hierro de IRONWORKS HRs. Por favor dime las medidas aproximadas de tu proyecto para ayudarte con la cotización."
+        return "¡Hola! Entiendo tu solicitud. Por favor dime las medidas aproximadas de tu proyecto para ayudarte."
         
 
 # ============================================================
