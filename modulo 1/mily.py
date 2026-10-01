@@ -1,3 +1,4 @@
+
 # ============================================================
 # MILY — IRONWORKS HR
 # SISTEMA COMERCIAL Y ASISTENTE VIRTUAL
@@ -71,6 +72,12 @@ ADMINES_AUTORIZADOS = [
     for admin in os.environ.get("ADMINES_AUTORIZADOS", "").split(",") 
     if admin.strip()
 ]
+
+# ------------------------------------------------------------
+# CONTACTOS CLAVE DE LOS MAESTROS (RESTAURADOS Y PROTEGIDOS)
+# ------------------------------------------------------------
+TELEFONO_MAESTRO_ANDRES = os.environ.get("TELEFONO_MAESTRO_ANDRES", "")
+TELEFONO_ALEXA = os.environ.get("TELEFONO_ALEXA", "")
 
 
 # ============================================================
@@ -171,9 +178,13 @@ def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto
         contexto_drive_actual = obtener_contexto_archivos_drive()
 
         system_instruction = f"""
-Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística, portones, rejas, separadores y mobiliario minimalista dirigido por los hermanos Rico.
+Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística, portones, rejas, separadores y mobiliario minimalista dirigido por los hermanos Rico (Maestro Andrés y equipo).
 
 {contexto_drive_actual}
+
+=== CONTACTOS INTERNOS DEL TALLER ===
+- Maestro Andrés: {TELEFONO_MAESTRO_ANDRES}
+- Alexa: {TELEFONO_ALEXA}
 
 === REGLAS DE ORO DE IDENTIDAD Y MEMORIA ===
 1. **Cero redundancias:** Si ya saludaste al cliente y te dio su nombre en un mensaje anterior, NUNCA vuelvas a decir "Soy Mily, la asesora...". Dirígete a él o ella por su nombre de forma directa y natural (ej: "¡Hola, Leidi!"). Retoma la conversación con naturalidad así hayan pasado horas o días.
@@ -181,10 +192,10 @@ Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializad
 
 === PROTOCOLO DE VISIÓN Y FOTOS DE PRODUCTOS ESTÁNDAR ===
 Cuando el cliente envíe una foto de referencia:
-- Analiza la imagen con extrema atención a los detalles, con tu visión  identifica que orticulo es y compárala con los códigos, nombres de las fotos y fichas técnicas disponibles en Google Drive (ej: códigos PYP para puertas y portones, LIN, GEO, JV, o ORG para separadores). si ves estructuras metálicas verticales con macetas, bandejas o vegetación, identifícala como **separador, jv jardinera o celosía metálica** (NUNCA la confundas con una porton o reja).
+- Analiza la imagen con extrema atención a los detalles, identifica qué artículo es y compárala con los códigos, nombres de las fotos y fichas técnicas disponibles en Google Drive (ej: códigos PYP para puertas y portones, LIN, GEO, JV, o ORG para separadores). Si ves estructuras metálicas verticales con macetas, bandejas o vegetación, identifícala como **separador, jv jardinera o celosía metálica** (NUNCA la confundas con un portón o reja).
 - **Si la foto corresponde a un producto estándar de nuestras fotos y fichas técnicas:** Salúdalo por su nombre, indícale de inmediato el código del producto, su precio base de referencia, la medida estándar en la que viene (ej: 2x1 metros) y lo que incluye (como la pintura electrostática). No lo mandes a cotizar con el maestro si es un producto estándar listo para pedir.
 - **Si el cliente pide ver más fotos o diseños:** Ofrécele enviarle opciones adicionales de nuestros códigos guardados o comparte nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (sin cambiar ninguna letra ni número).
-- **Si el cliente quiere una modificación especial, medidas personalizadas o envía una foto totalmente ajena/especial (como una escalera o diseño a medida):** Recopila los datos clave poco a poco (Medidas ancho/alto, ubicación/barrio, tipo de acabado) y explícale que le pasarás el caso al Maestro Andrés para la cotización formal.
+- **Si el cliente quiere una modificación especial, medidas personalizadas o envía una foto totalmente ajena/especial (como una escalera o diseño a medida):** Recopila los datos clave poco a poco (Medidas ancho/alto, ubicación/barrio, tipo de acabado) y explícale que le pasarás el caso directamente al Maestro Andrés o a Alexa para la cotización formal.
 
 === FILOSOFÍA DE FABRICACIÓN Y PAGOS ===
 - Todo se fabrica bajo pedido (mínimo 3 días hábiles en adelante).
@@ -205,7 +216,7 @@ Cuando el cliente envíe una foto de referencia:
         contenido = []
         if mensaje_usuario:
             contenido.append(mensaje_usuario)
-        else:
+        elif imagen_bytes:
             contenido.append("Hola, te envío esta referencia visual de mi proyecto en hierro:")
 
         if imagen_bytes:
@@ -264,7 +275,6 @@ def enviar_mensaje_telegram(chat_id, texto_respuesta):
     payload = {
         "chat_id": chat_id,
         "text": texto_respuesta,
-        "parse_mode": "Markdown"
     }
     
     try:
