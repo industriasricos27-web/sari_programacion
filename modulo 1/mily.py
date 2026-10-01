@@ -74,10 +74,10 @@ ADMINES_AUTORIZADOS = [
 ]
 
 # ------------------------------------------------------------
-# CONTACTOS CLAVE DE LOS MAESTROS (RESTAURADOS Y PROTEGIDOS)
+# CHAT IDs DE TELEGRAM PARA LOS MAESTROS / TALLER
 # ------------------------------------------------------------
-TELEFONO_MAESTRO_ANDRES = os.environ.get("TELEFONO_MAESTRO_ANDRES", "")
-TELEFONO_ALEXA = os.environ.get("TELEFONO_ALEXA", "")
+TELEGRAM_MAESTRO_ANDRES = os.environ.get("TELEGRAM_MAESTRO_ANDRES", "")
+TELEGRAM_ALEXA = os.environ.get("TELEGRAM_ALEXA", "")
 
 
 # ============================================================
@@ -174,17 +174,12 @@ def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto
         return "Lo siento, en este momento tengo un problema temporal de configuración con mi inteligencia artificial."
 
     try:
-        # Cargamos dinámicamente los nombres de tus fotos y fichas técnicas desde Google Drive
         contexto_drive_actual = obtener_contexto_archivos_drive()
 
         system_instruction = f"""
-Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística, portones, rejas, separadores y mobiliario minimalista dirigido por los hermanos Rico (Maestro Andrés y equipo).
+Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializado en herrería pesada, alta forja artística, portones, rejas, separadores y mobiliario minimalista dirigido por los hermanos Rico.
 
 {contexto_drive_actual}
-
-=== CONTACTOS INTERNOS DEL TALLER ===
-- Maestro Andrés: {TELEFONO_MAESTRO_ANDRES}
-- Alexa: {TELEFONO_ALEXA}
 
 === REGLAS DE ORO DE IDENTIDAD Y MEMORIA ===
 1. **Cero redundancias:** Si ya saludaste al cliente y te dio su nombre en un mensaje anterior, NUNCA vuelvas a decir "Soy Mily, la asesora...". Dirígete a él o ella por su nombre de forma directa y natural (ej: "¡Hola, Leidi!"). Retoma la conversación con naturalidad así hayan pasado horas o días.
@@ -195,7 +190,7 @@ Cuando el cliente envíe una foto de referencia:
 - Analiza la imagen con extrema atención a los detalles, identifica qué artículo es y compárala con los códigos, nombres de las fotos y fichas técnicas disponibles en Google Drive (ej: códigos PYP para puertas y portones, LIN, GEO, JV, o ORG para separadores). Si ves estructuras metálicas verticales con macetas, bandejas o vegetación, identifícala como **separador, jv jardinera o celosía metálica** (NUNCA la confundas con un portón o reja).
 - **Si la foto corresponde a un producto estándar de nuestras fotos y fichas técnicas:** Salúdalo por su nombre, indícale de inmediato el código del producto, su precio base de referencia, la medida estándar en la que viene (ej: 2x1 metros) y lo que incluye (como la pintura electrostática). No lo mandes a cotizar con el maestro si es un producto estándar listo para pedir.
 - **Si el cliente pide ver más fotos o diseños:** Ofrécele enviarle opciones adicionales de nuestros códigos guardados o comparte nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4` (sin cambiar ninguna letra ni número).
-- **Si el cliente quiere una modificación especial, medidas personalizadas o envía una foto totalmente ajena/especial (como una escalera o diseño a medida):** Recopila los datos clave poco a poco (Medidas ancho/alto, ubicación/barrio, tipo de acabado) y explícale que le pasarás el caso directamente al Maestro Andrés o a Alexa para la cotización formal.
+- **Si el cliente quiere una modificación especial, medidas personalizadas o envía una foto totalmente ajena/especial (como una escalera o diseño a medida):** Recopila los datos clave poco a poco (Medidas ancho/alto, ubicación/barrio, tipo de acabado) y explícale que le avisarás al Maestro Andrés de inmediato para que revise el caso y le de su cotización formal.
 
 === FILOSOFÍA DE FABRICACIÓN Y PAGOS ===
 - Todo se fabrica bajo pedido (mínimo 3 días hábiles en adelante).
@@ -228,7 +223,15 @@ Cuando el cliente envíe una foto de referencia:
             )
 
         response = chat.send_message(contenido)
-        return response.text
+        
+        # Detector inteligente: Si Mily menciona que le avisará al maestro/taller, disparamos la alerta por Telegram al Maestro Andrés
+        texto_respuesta = response.text
+        if any(palabra in texto_respuesta.lower() for palabra in ["maestro andrés", "le avisaré", "revisar el caso", "cotización formal", "con el maestro"]):
+            if TELEGRAM_MAESTRO_ANDRES:
+                alerta_taller = f"🔔 [Mily - Aviso al Taller]\nUn cliente (ID: {user_id}) requiere atención personalizada o cotización a medida.\nUltimo mensaje del cliente: '{mensaje_usuario}'\nMily respondió: '{texto_respuesta[:200]}...'"
+                enviar_mensaje_telegram(TELEGRAM_MAESTRO_ANDRES, alerta_taller)
+
+        return texto_respuesta
 
     except Exception as e:
         print(f"❌ [Bloque 6] Error generando respuesta con Mily: {e}")
@@ -312,7 +315,6 @@ def webhook_whatsapp_meta():
                     msg_obj = mensaje_data['messages']
                     numero_remitente = msg_obj['from']
                     
-                    # Manejar texto o imagen en WhatsApp
                     mensaje = ""
                     imagen_bytes = None
                     
@@ -344,7 +346,6 @@ def webhook_telegram():
             mensaje = message_data.get("text", message_data.get("caption", ""))
             
             imagen_bytes = None
-            # Si el usuario envía una foto en Telegram, la descargamos para pasársela a Mily
             if "photo" in message_data:
                 try:
                     file_id = message_data["photo"][-1]["file_id"]
