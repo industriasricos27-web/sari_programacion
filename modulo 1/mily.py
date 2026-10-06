@@ -1,4 +1,3 @@
-
 # ============================================================
 # MILY — IRONWORKS HRs
 # SISTEMA COMERCIAL Y ASISTENTE VIRTUAL
@@ -9,11 +8,12 @@
 # ============================================================
 
 import os
+import json
 import requests
 from flask import Flask, jsonify, request
 
 MILY_NOMBRE = "Mily"
-MILY_VERSION = "3.2"
+MILY_VERSION = "3.3"
 EMPRESA_NOMBRE = "IRONWORKS HR"
 EMPRESA_DESCRIPCION = "Hermanos Rico Diseño y Estructura"
 
@@ -85,7 +85,6 @@ TELEGRAM_ALEXA = os.environ.get("TELEGRAM_ALEXA", "")
 # ============================================================
 
 import io
-import json
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2 import service_account
@@ -145,19 +144,38 @@ def obtener_contexto_archivos_drive():
 
 
 # ============================================================
-# BLOQUE 5 y 6 — MEMORIA PERSISTENTE Y MODELO GEMINI (MILY)
+# BLOQUE 5 y 6 — MEMORIA PERSISTENTE (JSON) Y MODELO GEMINI
 # ============================================================
 
-from google import genai
 from google.genai import types
 
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
 MODELO_GEMINI = "gemini-2.5-flash"
 
-# Diccionario global robusto para almacenar el historial de mensajes por usuario
-HISTORIALES_CONVERSACION = {}
-LIMITE_HISTORIAL = 12  # Mantiene los últimos mensajes para no perder el hilo
+# Archivo local para persistencia a prueba de reinicios de Render
+ARCHIVO_HISTORIALES = "historiales.json"
+LIMITE_HISTORIAL = 12  # Mantiene los últimos mensajes recientes para contexto
+
+def cargar_historiales_disco():
+    if os.path.exists(ARCHIVO_HISTORIALES):
+        try:
+            with open(ARCHIVO_HISTORIALES, "r", encoding="utf-8") as f:
+                print("✓ [Bloque 5] Historiales cargados desde disco exitosamente.")
+                return json.load(f)
+        except Exception as e:
+            print(f"⚠ [Bloque 5] Error leyendo historiales.json: {e}")
+    return {}
+
+def guardar_historiales_disco(historiales):
+    try:
+        with open(ARCHIVO_HISTORIALES, "w", encoding="utf-8") as f:
+            json.dump(historiales, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"⚠ [Bloque 5] Error guardando historiales.json: {e}")
+
+# Cargamos los historiales al iniciar
+HISTORIALES_CONVERSACION = cargar_historiales_disco()
 
 def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None, contexto_drive=""):
     if not client:
@@ -172,17 +190,16 @@ Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializad
 {contexto_drive_actual}
 
 === REGLAS DE ORO DE FLUJO Y MEMORIA COMERCIAL (ESTRICTAS) ===
-1. **Manejo del Nombre y Saludo:**
-   - En el **primer mensaje absoluto** de la conversación, saluda amablemente, preséntate brevemente y pregunta el nombre del cliente.
-   - **A partir del segundo mensaje en adelante**, NUNCA vuelvas a decir "Soy Mily..." ni vuelvas a preguntar el nombre. Ya lo conoces. Dirígete al cliente por su nombre de forma natural. Si aún no sabes qué desea, tu única pregunta debe ser: ¿qué proyecto deseas realizar?
+1. **Manejo del Historial y Saludo Natural:**
+   - Analiza el historial previo de la conversación antes de responder. Si ya han hablado antes, **NUNCA** vuelvas a decir "Soy Mily..." ni vuelvas a dar un saludo de bienvenida desde cero. Retoma la charla de manera natural y fluida.
+   - Si es absolutamente el primer mensaje de un cliente nuevo, saluda cálidamente y pregunta en qué proyecto de herrería o mobiliario le podemos ayudar.
 2. **Ventas Directas por Catálogo y Redes:**
-   - Si el cliente pregunta si tienes catálogo, fotos, referencias, diseños u ofertas, respóndele de inmediato proporcionándole los códigos de los archivos de Google Drive listados arriba y compártele nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4`.
+   - Si el cliente pregunta por catálogo, fotos, referencias, diseños u ofertas, respóndele de inmediato proporcionándole los nombres o códigos de los archivos de Google Drive listados arriba y compártele obligatoriamente nuestro enlace oficial de Pinterest: `https://pin.it/1zN04VLU4`.
 3. **Análisis Estricto de Fotos:**
-   - Si el cliente envía una foto, analízala a fondo (identifica si es una cama, mesa, separador, reja, portón de interior o exterior).
-   - Si el diseño está en el catálogo de Google Drive, dale la información o precio base.
-   - Si es un diseño ajeno o especial que no tenemos, indícale amablemente que le pasarás los datos de inmediato al Maestro Andrés para que revise la viabilidad y cotización formal.
+   - Si el cliente envía una foto, analízala a fondo (cama, mesa, separador, reja, portón interior o exterior).
+   - Si está en el catálogo, dale la información o precio base. Si es un diseño ajeno o especial, indícale amablemente que le pasarás los datos de inmediato al Maestro Andrés para que revise la viabilidad y cotización formal.
 4. **Preguntas de Ubicación (Solo bajo interés real):**
-   - Las preguntas sobre barrio, sector o detalles de instalación **NUNCA** se hacen al inicio. Solo se solicitan cuando el cliente ya mostró un interés claro y avanzado en mandar a hacer un producto.
+   - Las preguntas sobre barrio, sector o detalles de instalación **NUNCA** se hacen al inicio. Solo se solicitan cuando el cliente ya mostró un interés claro y avanzado en mandar a fabricar un producto.
 
 === FILOSOFÍA DE FABRICACIÓN Y PAGOS ===
 - Todo se fabrica bajo pedido personalizado. 
@@ -221,8 +238,11 @@ Eres Mily, la asesora comercial experta de IRONWORKS HRs, un taller especializad
 
         respuesta_texto = response.text
 
-        # Guardar la respuesta de Mily en el historial del usuario para mantener la memoria
+        # Guardar la respuesta de Mily en el historial del usuario
         HISTORIALES_CONVERSACION[user_id].append({"role": "model", "parts": [respuesta_texto]})
+        
+        # Guardar inmediatamente en disco (historiales.json) para persistencia total
+        guardar_historiales_disco(HISTORIALES_CONVERSACION)
 
         # Detector de avisos al taller por Telegram
         if any(palabra in respuesta_texto.lower() for palabra in ["maestro andrés", "le avisaré", "revisar el caso", "cotización formal", "con el maestro"]):
@@ -386,3 +406,4 @@ if __name__ == "__main__":
         port=PUERTO,
         debug=True
     )
+
