@@ -266,6 +266,8 @@ def guardar_mensaje(user_id, role, text):
 
 
 def obtener_historial(user_id):
+    from google.genai import types
+
     with DB_LOCK:
         conexion = obtener_conexion_db()
         try:
@@ -279,14 +281,21 @@ def obtener_historial(user_id):
         finally:
             conexion.close()
 
-    # Mapeo estricto compatible con google-genai
-    return [
-        {
-            "role": "user" if fila["role"] == "user" else "model",
-            "parts": [fila["text"]],
-        }
-        for fila in filas
-    ]
+    historial = []
+
+    for fila in filas:
+        rol = "user" if fila["role"] == "user" else "model"
+
+        historial.append(
+            types.Content(
+                role=rol,
+                parts=[
+                    types.Part.from_text(text=fila["text"])
+                ]
+            )
+        )
+
+    return historial
 
 
 def guardar_nombre_si_aparece(user_id, mensaje):
@@ -357,12 +366,16 @@ FUENTES OFICIALES:
 {contexto_drive}
 
 SEDES:
-- Bosa: {SEDES["bosa"]}
-- Fontibón: {SEDES["fontibon"]}
+- Bosa: 
+{SEDES["bosa"]}
+- Fontibón: 
+{SEDES["fontibon"]}
 
 CONTACTOS:
-- Alexa: {CONTACTOS_PUBLICOS["alexa"]["telefono"]}
-- Andrés: {CONTACTOS_PUBLICOS["andres"]["telefono"]}
+- Alexa: 
+{CONTACTOS_PUBLICOS["alexa"]["telefono"]}
+- Andrés: 
+{CONTACTOS_PUBLICOS["andres"]["telefono"]}
 
 REGLAS:
 1. Mantén continuidad si ya hay historial.
@@ -400,25 +413,31 @@ def generar_respuesta_mily(user_id, mensaje_usuario, imagen_bytes=None):
 
         system_instruction = construir_system_instruction(contexto_drive) + f"\n\nPERFIL DEL CLIENTE:\n{perfil}"
 
-        # Construcción limpia de contenidos para el nuevo SDK
         from google.genai import types
-        
+
         contenidos = list(historial)
-        
         partes_actuales = []
+
         if mensaje_usuario:
-            partes_actuales.append(mensaje_usuario)
-            
+            partes_actuales.append(
+                types.Part.from_text(text=mensaje_usuario)
+            )
+
         if imagen_bytes:
             partes_actuales.append(
-                types.Part.from_bytes(data=imagen_bytes, mime_type="image/jpeg")
+                types.Part.from_bytes(
+                    data=imagen_bytes,
+                    mime_type="image/jpeg"
+                )
             )
-            
+
         if partes_actuales:
-            contenidos.append({
-                "role": "user",
-                "parts": partes_actuales
-            })
+            contenidos.append(
+                types.Content(
+                    role="user",
+                    parts=partes_actuales
+                )
+            )
 
         if not contenidos:
             return "Hola. Soy Mily, asesora comercial de IRONWORKS HR. ¿En qué proyecto te puedo ayudar?"
