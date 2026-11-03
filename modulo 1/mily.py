@@ -372,7 +372,7 @@ CÓDIGOS Y PARÁMETROS BASE OFICIALES DEL TALLER:
    - Desde $400,000 COP en adelante (marco ventana mínimo de aprox. 80 cm de alto por 1.20 m de ancho).
    - Nota: No nos hacemos responsables de vidriería. Para medidas mayores, batientes o corredizas, escalar inmediatamente con el maestro Andrés.
 3. **E y M (Escaleras y Mezzanines):**
-   - Se agrupan por el uso de material más grueso.
+   - Se agrupan por el uso de material más grueso. tubo de 10 x 10 y lamia de afojor 
    - Escaleras (flotantes o tipo espina de pescado): Desde $4,500,000 COP a partir de los 10 pasos (para casas de un nivel). Si son 2 o 3 niveles, se multiplica el valor por 2 o por 3 respectivamente. Tras dar este precio base, escalar con el maestro Andrés para visita técnica.
 
 FUENTES OFICIALES:
